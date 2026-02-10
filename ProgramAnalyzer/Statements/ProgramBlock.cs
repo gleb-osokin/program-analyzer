@@ -30,6 +30,12 @@ public sealed class ProgramBlock : List<Statement>
         }
 
         context.BlocksStack.Push((Func: owner, Block: this));
+        if (owner != null && context.PreviousAnalyzedStatement is IfStatement &&
+            !context.Declarations.TryAddDeclaration(owner.FunctionName, owner))
+        {
+            context.AddIssue(KnownErrors.ConflictDeclaration, owner);
+        }
+
         context.AnalyzeStack.Push(ProgramBlockTerminator.Instance);
 
         for (var i = Count - 1; i >= 0; i--)

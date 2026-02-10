@@ -20,7 +20,9 @@ public sealed class FunctionDeclaration(string functionName)
         if (mode != PassMode.CollectDeclarations)
             return;
             
-        if (!context.Declarations.TryAddDeclaration(FunctionName, this))
+        // we will put the declaration inside nested scope
+        if (context.PreviousAnalyzedStatement is not IfStatement &&
+            !context.Declarations.TryAddDeclaration(FunctionName, this))
         {
             context.AddIssue(KnownErrors.ConflictDeclaration, this);
         }

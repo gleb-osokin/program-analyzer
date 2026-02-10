@@ -265,4 +265,43 @@ public class ErrorsTests
             res => res.Count.ShouldBe(1),
             res => res[0].ShouldHaveError<PrintVariable>(UseOfUnassignedVariable, 9));
     }
+
+    [Fact]
+    public void Analyze_NonIntersectingScopes_ReportsIssues()
+    {
+        var program = Parser.Parse(
+           """
+           if (...) {
+             var a
+           }
+
+           if (...) {
+             var a // OK, independent scope
+           }
+
+           if (...) {
+             func A {
+                var a // OK, independent scope
+             }
+           }
+
+           if (...) {
+             func A {
+                var a // OK, independent scope
+             }
+           }
+
+           if (...) {
+             func a { // OK, independent scope
+                var a // error
+             }
+           }
+           """);
+
+        var result = new Analyzer().Analyze(program);
+
+        result.ShouldSatisfyAllConditions(
+            res => res.Count.ShouldBe(1),
+            res => res[0].ShouldHaveError<VariableDeclaration>(ConflictDeclaration, 12));
+    }
 }
