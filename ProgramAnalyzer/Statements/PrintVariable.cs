@@ -18,7 +18,7 @@ public sealed class PrintVariable(string variableName) : Statement
         {
             context.AddIssue(KnownErrors.UseOfUndeclaredVariable, this);
         }
-        else if (!context.Assignments.Exists(VariableName))
+        else if (!context.Assignments.IsAssigned(VariableName))
         {
             context.AddIssue(KnownErrors.UseOfUnassignedVariable, this);
         }

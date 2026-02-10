@@ -5,6 +5,11 @@ namespace ProgramAnalyzer.Statements;
 
 public sealed class ProgramBlock : List<Statement>
 {
+    public ProgramBlock? ParentBlock { get; set; }
+
+    public ulong Position { get; set; }
+    public ulong EndPosition { get; set; }
+
     public string ToString(int indent)
     {
         var builder = new StringBuilder("{").AppendLine();

@@ -16,7 +16,7 @@ public sealed class IfStatementTerminator : Statement, ITerminator
     {
         if (mode == PassMode.AnalyzeCallStack)
         {
-            context.Assignments.PopScope();
+            context.Assignments.PopScope(context.LastAssignment);
         }
     }
 }

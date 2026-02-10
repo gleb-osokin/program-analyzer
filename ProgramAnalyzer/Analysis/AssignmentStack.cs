@@ -1,36 +1,55 @@
 ﻿using ProgramAnalyzer.Statements;
+using System.Runtime.InteropServices;
 
 namespace ProgramAnalyzer.Analysis;
 
 public sealed class AssignmentStack
 {
-    private readonly Dictionary<string, AssignVariable> _fastTrackDictionary = [];
+    private readonly Dictionary<string, bool> _assignments = [];
 
-    public Stack<ulong> IfStatementPositionsStack { get; } = [];
+    private IfStatement? _current;
+
     public Stack<(AssignVariable Statement, ulong Position)> AssignVariablesStack { get; } = [];
 
-    public void PushScope(ulong position) => IfStatementPositionsStack.Push(position);
-
-    public void PopScope()
+    public void PushScope(IfStatement statement)
     {
-        var position = IfStatementPositionsStack.Pop();
+        _current = statement;
+    }
 
-        while (AssignVariablesStack.TryPeek(out var tuple) && 
-               tuple.Position > position)
+    public void PopScope(AssignVariable? lastKnownAssignment)
+    {
+        if (_current == null)
         {
-            _fastTrackDictionary.Remove(
-                AssignVariablesStack.Pop().Statement.VariableName);
+            // if we're here, then we have a bug in our algorithm...
+            throw new InvalidOperationException("Cannot pop beyond root scope");
+        }
+
+        PopAssignments(_current.Position, lastKnownAssignment);
+        _current = _current.ParentIfStatement;
+    }
+
+    public void TryAdd(AnalyzerContext context, AssignVariable assignment)
+    {
+        // ignore if already assigned
+        ref var isAssigned = ref CollectionsMarshal.GetValueRefOrAddDefault(_assignments, assignment.VariableName, out _);
+        if (isAssigned)
+            return;
+
+        assignment.InitialPosition = context.Position;
+        assignment.PreviousAssignment = context.LastAssignment;
+        context.LastAssignment = assignment;
+        isAssigned = true;
+    }
+
+    public bool IsAssigned(string name) => _assignments.GetValueOrDefault(name, false);
+
+    private void PopAssignments(ulong ifBlockStart, AssignVariable? assignment)
+    {
+        while (assignment != null && 
+            assignment.InitialPosition > ifBlockStart)
+        {
+            _assignments[assignment.VariableName] = false;
+            assignment = assignment.PreviousAssignment;
         }
     }
-
-    public bool TryAdd(AssignVariable assignment, ulong position)
-    {
-        if (!_fastTrackDictionary.TryAdd(assignment.VariableName, assignment))
-            return false;
-
-        AssignVariablesStack.Push((assignment, position));
-        return true;
-    }
-
-    public bool Exists(string name) => _fastTrackDictionary.ContainsKey(name);
 }

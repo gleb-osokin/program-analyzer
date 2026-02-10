@@ -17,6 +17,7 @@ public class AnalyzerContext
     public DeclarationScopeTree Declarations { get; }
     public AssignmentStack Assignments { get; } = new();
     public Statement? PreviousAnalyzedStatement { get; set; }
+    public AssignVariable? LastAssignment { get; set; }
 
     public void IncrementPosition() => Position++;
     public void ResetPosition() => Position = 0;

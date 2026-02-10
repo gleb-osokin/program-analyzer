@@ -6,6 +6,9 @@ public sealed class AssignVariable(string variableName) : Statement
 {
     public string VariableName { get; } = variableName;
 
+    public AssignVariable? PreviousAssignment { get; set; }
+    public ulong InitialPosition { get; set; } // position of the first assignment in the call stack
+
     public override string ToString(int indent) => $"{VariableName} = ...";
 
     public override void OnEnter(PassMode mode, AnalyzerContext context)
@@ -20,7 +23,7 @@ public sealed class AssignVariable(string variableName) : Statement
         }
         else
         {
-            context.Assignments.TryAdd(this, context.Position);
+            context.Assignments.TryAdd(context, this);
         }
     }
 }
