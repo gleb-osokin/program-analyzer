@@ -6,10 +6,6 @@ namespace ProgramAnalyzer.Analysis;
 public sealed class DeclarationStack
 {
     private readonly Dictionary<string, Statement> _declarations = [];
-    private ProgramBlock? _current;
-
-    public ProgramBlock CurrentScope => _current ??
-        throw new InvalidOperationException("Root scope not initialized");
 
     public bool TryAddDeclaration(string name, Statement declaration)
     {
