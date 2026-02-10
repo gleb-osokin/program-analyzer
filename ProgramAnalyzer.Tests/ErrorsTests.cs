@@ -31,7 +31,7 @@ public class ErrorsTests
             }
             """);
 
-        var result = new Analyzer().Analyze(program);
+        var result = new Analyzer().Analyze(program).SortIssues();
 
         result.ShouldSatisfyAllConditions(
             res => res.Count.ShouldBe(5),
@@ -65,7 +65,7 @@ public class ErrorsTests
             print(g) // error
             """);
 
-        var result = new Analyzer().Analyze(program);
+        var result = new Analyzer().Analyze(program).SortIssues();
 
         result.ShouldSatisfyAllConditions(
             res => res.Count.ShouldBe(7),
@@ -111,7 +111,7 @@ public class ErrorsTests
             }
             """);
 
-        var result = new Analyzer().Analyze(program);
+        var result = new Analyzer().Analyze(program).SortIssues();
 
         result.ShouldSatisfyAllConditions(
             res => res.Count.ShouldBe(3),
@@ -136,7 +136,7 @@ public class ErrorsTests
             print(a) // OK, a is still in scope
             """);
 
-        var result = new Analyzer().Analyze(program);
+        var result = new Analyzer().Analyze(program).SortIssues();
 
         result.ShouldSatisfyAllConditions(
             res => res.Count.ShouldBe(1),
@@ -165,11 +165,28 @@ public class ErrorsTests
 
             """);
 
-        var result = new Analyzer().Analyze(program);
+        var result = new Analyzer().Analyze(program).SortIssues();
 
         result.ShouldSatisfyAllConditions(
             res => res.Count.ShouldBe(1),
             res => res[0].ShouldHaveError<PrintVariable>(UseOfUnassignedVariable, 5));
+    }
+
+    [Fact]
+    public void Analyze_AssignmentBeforeDeclaration_ReportsIssue()
+    {
+        var program = Parser.Parse(
+            """
+            a = ... // error
+            var a
+            print(a) // OK. Current requirements don't state expected behavior.
+            """);
+
+        var result = new Analyzer().Analyze(program).SortIssues();
+
+        result.ShouldSatisfyAllConditions(
+            res => res.Count.ShouldBe(1),
+            res => res[0].ShouldHaveError<AssignVariable>(UseOfUndeclaredVariable, 0));
     }
 
     [Fact]
@@ -191,7 +208,7 @@ public class ErrorsTests
             print(a) // OK
             """);
 
-        var result = new Analyzer().Analyze(program);
+        var result = new Analyzer().Analyze(program).SortIssues();
 
         result.ShouldSatisfyAllConditions(
             res => res.Count.ShouldBe(2),
@@ -222,7 +239,7 @@ public class ErrorsTests
             }
             """);
 
-        var result = new Analyzer().Analyze(program);
+        var result = new Analyzer().Analyze(program).SortIssues().SortIssues();
 
         result.ShouldSatisfyAllConditions(
             res => res.Count.ShouldBe(3),
@@ -259,7 +276,7 @@ public class ErrorsTests
            print(a) // OK
            """);
 
-        var result = new Analyzer().Analyze(program);
+        var result = new Analyzer().Analyze(program).SortIssues();
 
         result.ShouldSatisfyAllConditions(
             res => res.Count.ShouldBe(1),
@@ -298,10 +315,72 @@ public class ErrorsTests
            }
            """);
 
-        var result = new Analyzer().Analyze(program);
+        var result = new Analyzer().Analyze(program).SortIssues();
 
         result.ShouldSatisfyAllConditions(
             res => res.Count.ShouldBe(1),
             res => res[0].ShouldHaveError<VariableDeclaration>(ConflictDeclaration, 12));
+    }
+
+    [Fact]
+    public void Analyze_ConflictingDeclarations_IssuesStillInspected()
+    {
+        var program = Parser.Parse(
+           """
+           func A {
+             a = ... // error
+           }
+
+           func A { // error
+             a = ... // error
+           }
+
+           func B {
+             b = ... // error
+           }
+
+           func B { // error
+             var b
+             b = ...
+           }
+
+           B()
+           print(b) // error, duplicate func not called
+           """);
+
+        var result = new Analyzer().Analyze(program).SortIssues();
+
+        result.ShouldSatisfyAllConditions(
+            res => res.Count.ShouldBe(6),
+            res => res[0].ShouldHaveError<AssignVariable>(UseOfUndeclaredVariable, 1),
+            res => res[1].ShouldHaveError<FunctionDeclaration>(ConflictDeclaration, 2),
+            res => res[2].ShouldHaveError<AssignVariable>(UseOfUndeclaredVariable, 3),
+            res => res[3].ShouldHaveError<AssignVariable>(UseOfUndeclaredVariable, 5),
+            res => res[4].ShouldHaveError<FunctionDeclaration>(ConflictDeclaration, 6),
+            res => res[5].ShouldHaveError<PrintVariable>(UseOfUndeclaredVariable, 10));
+    }
+
+    [Fact(Skip = "Nice to have, but there are no requirements for this, so not implemented at the moment")]
+    public void Analyze_ConflictingDeclarations_UseNearestDeclaration()
+    {
+        var program = Parser.Parse(
+           """
+           var a
+           func A {
+           }
+
+           func A { // error
+             a = ... // error
+           }
+
+           print(a) // OK, nearest declaration has assignment
+           """);
+
+        var result = new Analyzer().Analyze(program).SortIssues();
+
+        result.ShouldSatisfyAllConditions(
+            res => res.Count.ShouldBe(2),
+            res => res[0].ShouldHaveError<FunctionDeclaration>(ConflictDeclaration, 2),
+            res => res[0].ShouldHaveError<AssignVariable>(UseOfUnassignedVariable, 3));
     }
 }

@@ -9,37 +9,61 @@ public class Analyzer
         if (program.Count == 0)
             return [];
 
-        var context = new AnalyzerContext(program);
-        Analyze(program, context, PassMode.CollectDeclarations);
-        Analyze(program, context, PassMode.AnalyzeCallStack);
+        var context = new AnalyzerContext();
+        AnalyzeDeclarations(program, context);
+        AnalyzeCallStack(program, context);
 
         return context.GetAllIssues();
     }
 
-    private static void Analyze(ProgramBlock program, AnalyzerContext context, PassMode mode)
+    private static void AnalyzeDeclarations(ProgramBlock program, AnalyzerContext context)
     {
-        program.OnEnter(mode, context, owner: null);
+        program.OnDeclarationsEnter(context);
+        context.CurrentStatement = context.Queue.Dequeue();
 
-        while (context.AnalyzeStack.Count > 0)
+        while (context.CurrentStatement != null)
         {
-            var statement = context.AnalyzeStack.Pop();
-
-            // We will only walk all nodes in the order of their appearance
-            // during declarations collection.
-            if (mode == PassMode.CollectDeclarations)
-            {
-                statement.Position = context.Position;
-            }
-
-            statement.OnEnter(mode, context);
-            context.PreviousAnalyzedStatement = statement;
-
-            if (statement is not ITerminator)
-            {
-                context.IncrementPosition();
-            }
+            var statement = context.CurrentStatement;
+            statement.OnDeclarationsEnter(context);
+            context.CurrentStatement = context.Queue.Dequeue();
         }
+    }
 
-        context.ResetPosition();
+    private static void AnalyzeCallStack(ProgramBlock program, AnalyzerContext context)
+    {
+        program.OnCallStackEnter(context);
+        context.CurrentStatement = context.Stack.Pop();
+
+        while (context.CurrentStatement != null)
+        {
+            var statement = context.CurrentStatement;
+            statement.OnCallStackEnter(context);
+
+            var currentInvocation = context.CurrentInvocation;
+            if (currentInvocation != null && statement.IsLastMember)
+            {
+                statement.ParentIfStatement = currentInvocation.ParentIfStatement;
+                currentInvocation.ParentIfStatement = null;
+
+                if (statement is Invocation invocation && !invocation.IsEmpty)
+                {
+                    // we need to go deeper...
+                }
+                else do
+                {
+                    context.CurrentInvocation = currentInvocation.ParentInvocation;
+                    currentInvocation.ParentInvocation = null;
+                } while (context.CurrentInvocation?.IsLastMember == true);
+            }
+
+            if (statement.ParentIfStatement != null)
+            {
+                context.Assignments.PopScope();
+            }
+
+            var nextStatement = context.Stack.Pop();
+            context.CurrentStatement = nextStatement;
+            context.Position++;
+        }
     }
 }

@@ -7,7 +7,9 @@ public sealed class FunctionDeclaration(string functionName)
   : Statement, IEnumerable<Statement>
 {
     public string FunctionName { get; } = functionName;
+
     public ProgramBlock Body { get; } = [];
+    public bool IsInvocable { get; set; }
 
     public override string ToString(int indent) => $"func {FunctionName} " + Body.ToString(indent);
 
@@ -15,14 +17,14 @@ public sealed class FunctionDeclaration(string functionName)
     IEnumerator IEnumerable.GetEnumerator() => Body.GetEnumerator();
     public void Add(Statement statement) => Body.Add(statement);
 
-    public override void OnEnter(PassMode mode, AnalyzerContext context)
+    public override void OnDeclarationsEnter(AnalyzerContext context)
     {
-        if (mode != PassMode.CollectDeclarations)
-            return;
-            
-        // we will put the declaration inside nested scope
-        if (context.PreviousAnalyzedStatement is not IfStatement &&
-            !context.Declarations.TryAddDeclaration(FunctionName, this))
+        IsInvocable = ParentIfStatement == null;
+        var isConflict = IsInvocable
+            ? !context.Declarations.TryAddDeclaration(FunctionName, this)
+            : context.Declarations.GetFunctionDeclaration(FunctionName, ParentScope!) != null;
+
+        if (isConflict)
         {
             context.AddIssue(KnownErrors.ConflictDeclaration, this);
         }
@@ -30,7 +32,12 @@ public sealed class FunctionDeclaration(string functionName)
         if (Body.Count <= 0)            
             return;
 
-        // check for conflicting/missing declarations
-        Body.OnEnter(mode, context, owner: this);
+        // check for conflicting/missing declarations even if we are in conflict
+        Body.OnDeclarationsEnter(context);
+    }
+
+    public override void OnCallStackEnter(AnalyzerContext context)
+    {
+        // ignore function declarations completely during call stack analysis
     }
 }

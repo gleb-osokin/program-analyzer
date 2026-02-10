@@ -6,25 +6,18 @@ public class AnalyzerContext
 {
     private readonly Dictionary<Statement, List<string>> _issues = [];
 
-    public AnalyzerContext(ProgramBlock root) => Declarations = new DeclarationScopeTree(root);
+    public long Position { get; set; }
 
-    public ulong Position { get; private set; }
+    public LinkedQueue Queue { get; } = new();
+    public LinkedStack Stack { get; } = new();
 
-    public Stack<Statement> AnalyzeStack { get; } = [];
-    public Stack<(FunctionDeclaration? Func, ProgramBlock Block)> BlocksStack { get; } = [];
-
-    public ProgramBlock CurrentBlock => BlocksStack.Peek().Block;
-    public DeclarationScopeTree Declarations { get; }
+    public DeclarationStack Declarations { get; } = new();
     public AssignmentStack Assignments { get; } = new();
-    public Statement? PreviousAnalyzedStatement { get; set; }
-    public AssignVariable? LastAssignment { get; set; }
-
-    public void IncrementPosition() => Position++;
-    public void ResetPosition() => Position = 0;
+    public Statement? CurrentStatement { get; set; }
+    public Invocation? CurrentInvocation { get; set; }
 
     public List<Issue> GetAllIssues() =>
         _issues
-            .OrderBy(pair => pair.Key.Position)
             .SelectMany(pair =>
                 pair.Value.Select(err => new Issue(err, pair.Key)))
             .ToList();

@@ -8,17 +8,17 @@ public sealed class PrintVariable(string variableName) : Statement
 
     public override string ToString(int indent) => $"print({VariableName})";
 
-    public override void OnEnter(PassMode mode, AnalyzerContext context)
+    public override void OnDeclarationsEnter(AnalyzerContext context)
     {
-        if (mode != PassMode.AnalyzeCallStack)
-            return;
-
-        var declaration = context.Declarations.GetDeclaration<VariableDeclaration>(VariableName, context.Declarations.PeekScope());
-        if (declaration == null || declaration.Position >= Position)
+        if (!context.Declarations.IsVariableDeclared(VariableName, ParentScope!))
         {
             context.AddIssue(KnownErrors.UseOfUndeclaredVariable, this);
         }
-        else if (!context.Assignments.IsAssigned(VariableName))
+    }
+
+    public override void OnCallStackEnter(AnalyzerContext context)
+    {
+        if (!context.Assignments.IsAssigned(VariableName))
         {
             context.AddIssue(KnownErrors.UseOfUnassignedVariable, this);
         }

@@ -21,11 +21,11 @@ internal static class Parser
     public static ProgramBlock Parse(string input)
     {
         var lineStart = 0;
-        var lineNumber = 0L;
-        return ParseInternal(input.ReplaceLineEndings("\n"), ref lineStart, ref lineNumber);
+        var position = 0L;
+        return ParseInternal(input.ReplaceLineEndings("\n"), ref lineStart, ref position);
     }
 
-    private static ProgramBlock ParseInternal(ReadOnlySpan<char> input, ref int nextLineStart, ref long lineNumber)
+    private static ProgramBlock ParseInternal(ReadOnlySpan<char> input, ref int nextLineStart, ref long position)
     {
         // at least one program block, even for empty program
         var programBlock = new ProgramBlock();
@@ -49,12 +49,9 @@ internal static class Parser
 
             // We've reached the end of the program block
             if (line.IndexOf('}') >= 0)
-            {
-                lineNumber++;
                 break;
-            }
 
-            ProcessLine(programBlock, input, line, ref nextLineStart, ref lineNumber);
+            ProcessLine(programBlock, input, line, ref nextLineStart, ref position);
 
             if (nextLineStart >= input.Length)
                 break;
@@ -70,13 +67,13 @@ internal static class Parser
         ReadOnlySpan<char> input, 
         ReadOnlySpan<char> line, 
         ref int nextLineStart,
-        ref long lineNumber)
+        ref long position)
     {
         var assignmentPos = line.IndexOf(" = ...", StringComparison.Ordinal);
         if (assignmentPos >= 0)
         {
             var varName = line[0..assignmentPos].Trim().ToString();
-            programBlock.Add(new AssignVariable(varName));
+            programBlock.Add(new AssignVariable(varName) { Position = position++ });
             return;
         }
 
@@ -89,8 +86,8 @@ internal static class Parser
             var openingPos = line.IndexOf('{');
             var funcName = line[(funcPos + "func ".Length)..openingPos].Trim().ToString();
             programBlock.Add(
-                new FunctionDeclaration(funcName)
-                .WithStatements(ParseInternal(input, ref nextLineStart, ref lineNumber)));
+                new FunctionDeclaration(funcName) { Position = position++ }
+                .WithStatements(ParseInternal(input, ref nextLineStart, ref position)));
             return;
         }
 
@@ -101,8 +98,9 @@ internal static class Parser
 
             programBlock.Add(new IfStatement()
             {
+                Position = position++,
                 // if-block can contain only a single statement and not an program block
-                ThenBody = ParseInternal(input, ref nextLineStart, ref lineNumber).First(),
+                ThenBody = ParseInternal(input, ref nextLineStart, ref position).First(),
             });
             return;
         }
@@ -111,7 +109,7 @@ internal static class Parser
         if (invocationPos >= 0)
         {
             var funcName = line[0..invocationPos].Trim().ToString();
-            programBlock.Add(new Invocation(funcName));
+            programBlock.Add(new Invocation(funcName) { Position = position++ });
             return;
         }
 
@@ -120,7 +118,7 @@ internal static class Parser
         {
             var closingPos = line.IndexOf(')');
             var varName = line[(printPos + "print(".Length)..closingPos].ToString();
-            programBlock.Add(new PrintVariable(varName));
+            programBlock.Add(new PrintVariable(varName) { Position = position++ });
             return;
         }
 
@@ -128,10 +126,8 @@ internal static class Parser
         if (varNamePos >= 0)
         {
             var varName = line[(varNamePos + "var ".Length)..].Trim().ToString();
-            programBlock.Add(new VariableDeclaration(varName));
+            programBlock.Add(new VariableDeclaration(varName) { Position = position++ });
             return;
         }
-
-        lineNumber++;
     }
 }

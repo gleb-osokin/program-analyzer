@@ -6,27 +6,40 @@ public sealed class Invocation(string functionName) : Statement
 {
     public string FunctionName { get; } = functionName;
 
+    public Invocation? ParentInvocation { get; set; }
+
+    public bool IsEmpty { get; set; }
+
     public override string ToString(int indent) => $"{FunctionName}()";
 
-    public override void OnEnter(PassMode mode, AnalyzerContext context)
+    public override void OnDeclarationsEnter(AnalyzerContext context)
     {
-        if (mode != PassMode.AnalyzeCallStack)
-            return;
+        // do nothing, we don't have enough information at this point
+    }
 
-        var func = context.Declarations.GetDeclaration<FunctionDeclaration>(FunctionName, context.CurrentBlock);
-        if (func == null)
+    public override void OnCallStackEnter(AnalyzerContext context)
+    {
+        var declaration = context.Declarations.GetFunctionDeclaration(FunctionName, ParentScope!);
+        if (declaration == null || !declaration.IsInvocable)
         {
             context.AddIssue(KnownErrors.CallOfUndeclaredFunc, this);
             return;
         }
 
+        IsEmpty = declaration.Body.Count == 0;
+
         // avoid recursive inspections
-        foreach (var block in context.BlocksStack)
+        var currentInvocation = context.CurrentInvocation;
+        while (currentInvocation != null)
         {
-            if (block.Func == func)
+            if (currentInvocation.FunctionName == FunctionName)
                 return;
+
+            currentInvocation = currentInvocation.ParentInvocation;
         }
 
-        func.Body.OnEnter(mode, context, func);
+        ParentInvocation = context.CurrentInvocation;
+        context.CurrentInvocation = this;
+        declaration.Body.OnCallStackEnter(context);
     }
 }

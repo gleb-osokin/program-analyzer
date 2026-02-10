@@ -8,15 +8,15 @@ public sealed class AssignmentStack
     private readonly Dictionary<string, bool> _assignments = [];
 
     private IfStatement? _current;
-
-    public Stack<(AssignVariable Statement, ulong Position)> AssignVariablesStack { get; } = [];
+    private AssignVariable? _lastKnownAssignment;
 
     public void PushScope(IfStatement statement)
     {
+        statement.ParentIfStatement = _current;
         _current = statement;
     }
 
-    public void PopScope(AssignVariable? lastKnownAssignment)
+    public void PopScope()
     {
         if (_current == null)
         {
@@ -24,8 +24,7 @@ public sealed class AssignmentStack
             throw new InvalidOperationException("Cannot pop beyond root scope");
         }
 
-        PopAssignments(_current.Position, lastKnownAssignment);
-        _current = _current.ParentIfStatement;
+        PopAssignments(_current.CallStackPosition, _lastKnownAssignment);
     }
 
     public void TryAdd(AnalyzerContext context, AssignVariable assignment)
@@ -36,17 +35,16 @@ public sealed class AssignmentStack
             return;
 
         assignment.InitialPosition = context.Position;
-        assignment.PreviousAssignment = context.LastAssignment;
-        context.LastAssignment = assignment;
+        assignment.PreviousAssignment = _lastKnownAssignment;
+        _lastKnownAssignment = assignment;
         isAssigned = true;
     }
 
     public bool IsAssigned(string name) => _assignments.GetValueOrDefault(name, false);
 
-    private void PopAssignments(ulong ifBlockStart, AssignVariable? assignment)
+    private void PopAssignments(long ifBlockStart, AssignVariable? assignment)
     {
-        while (assignment != null && 
-            assignment.InitialPosition > ifBlockStart)
+        while (assignment != null && assignment.InitialPosition > ifBlockStart)
         {
             _assignments[assignment.VariableName] = false;
             assignment = assignment.PreviousAssignment;

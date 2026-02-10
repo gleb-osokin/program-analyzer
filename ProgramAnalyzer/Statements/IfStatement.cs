@@ -6,18 +6,21 @@ public sealed class IfStatement : Statement
 {
     public required Statement ThenBody { get; init; }
 
-    public IfStatement? ParentIfStatement { get; set; }
+    public long CallStackPosition { get; set; }
 
     public override string ToString(int indent) => "if (...) " + ThenBody.ToString(indent);
 
-    public override void OnEnter(PassMode mode, AnalyzerContext context)
+    public override void OnDeclarationsEnter(AnalyzerContext context)
     {
-        if (mode == PassMode.AnalyzeCallStack)
-        {
-            context.Assignments.PushScope(this);
-        }
+        ThenBody.ParentScope = ParentScope;
+        ThenBody.ParentIfStatement = this;
+        context.Queue.Enqueue(ThenBody);
+    }
 
-        context.AnalyzeStack.Push(IfStatementTerminator.Instance);
-        context.AnalyzeStack.Push(ThenBody);
+    public override void OnCallStackEnter(AnalyzerContext context)
+    {
+        CallStackPosition = context.Position;
+        context.Assignments.PushScope(this);
+        context.Stack.Push(ThenBody);
     }
 }

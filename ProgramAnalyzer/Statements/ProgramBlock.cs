@@ -5,10 +5,11 @@ namespace ProgramAnalyzer.Statements;
 
 public sealed class ProgramBlock : List<Statement>
 {
-    public ProgramBlock? ParentBlock { get; set; }
+    public ProgramBlock? ParentScope { get; set; }
 
-    public ulong Position { get; set; }
-    public ulong EndPosition { get; set; }
+    public FunctionDeclaration? Owner {  get; set; }
+
+    public Statement? FirstDeclaration { get; set; }
 
     public string ToString(int indent)
     {
@@ -27,25 +28,47 @@ public sealed class ProgramBlock : List<Statement>
 
     public override string ToString() => ToString(indent: 0);
 
-    public void OnEnter(PassMode mode, AnalyzerContext context, FunctionDeclaration? owner)
+    public bool IsEqualOrChildOf(ProgramBlock other)
     {
-        if (mode == PassMode.CollectDeclarations)
-        {
-            context.Declarations.PushScope(this);
-        }
+        if (other == this)
+            return true;
 
-        context.BlocksStack.Push((Func: owner, Block: this));
-        if (owner != null && context.PreviousAnalyzedStatement is IfStatement &&
-            !context.Declarations.TryAddDeclaration(owner.FunctionName, owner))
+        while (other.ParentScope != null)
         {
-            context.AddIssue(KnownErrors.ConflictDeclaration, owner);
-        }
+            if (other.ParentScope == this)
+                return true;
 
-        context.AnalyzeStack.Push(ProgramBlockTerminator.Instance);
+            other = other.ParentScope;
+        }
+        return false;
+    }
+
+    public void OnDeclarationsEnter(AnalyzerContext context)
+    {
+        if (Count == 0)
+            return;
+
+        Owner = context.CurrentStatement as FunctionDeclaration;
+        ParentScope = Owner?.ParentScope;
+
+        for (var i = 0; i < Count; i++)
+        {
+            var statement = this[i];
+            statement.ParentScope = this;
+            context.Queue.Enqueue(statement);
+        }
+    }
+
+    public void OnCallStackEnter(AnalyzerContext context)
+    {
+        if (Count == 0)
+            return;
 
         for (var i = Count - 1; i >= 0; i--)
         {
-            context.AnalyzeStack.Push(this[i]);
+            context.Stack.Push(this[i]);
         }
+
+        this[Count - 1].IsLastMember = true;
     }
 }
