@@ -41,32 +41,23 @@ public class Analyzer
             {
                 statement.Position = context.Position;
             }
+
             statement.OnCallStackEnter(context);
 
-            var currentInvocation = context.CurrentInvocation;
-            if (currentInvocation != null && statement.IsLastMember)
+            if (statement.HasNestedScope(context))
             {
-                statement.ParentIfStatement = currentInvocation.ParentIfStatement;
-                currentInvocation.ParentIfStatement = null;
-
-                if (statement is Invocation invocation && !invocation.IsEmpty)
+                // We need to go deeper...
+            }
+            else
+            {
+                while (statement?.IsLastMember == true)
                 {
-                    // we need to go deeper...
+                    statement = statement.GetParentStatement(context);
+                    statement?.OnCallStackExit(context);
                 }
-                else do
-                {
-                    context.CurrentInvocation = currentInvocation.ParentInvocation;
-                    currentInvocation.ParentInvocation = null;
-                } while (context.CurrentInvocation?.IsLastMember == true);
             }
 
-            if (statement.ParentIfStatement != null)
-            {
-                context.Assignments.PopScope();
-            }
-
-            var nextStatement = context.Stack.Pop();
-            context.CurrentStatement = nextStatement;
+            context.CurrentStatement = context.Stack.Pop();
             context.Position++;
         }
     }

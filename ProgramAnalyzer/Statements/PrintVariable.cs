@@ -23,7 +23,9 @@ public sealed class PrintVariable(string variableName) : Statement
 
     public override void OnCallStackEnter(AnalyzerContext context)
     {
-        if (IsDeclared && !context.Assignments.IsAssigned(VariableName))
+        if (IsDeclared && 
+            !context.IsTraversingFunctionDeclaration && 
+            !context.Assignments.IsAssigned(VariableName))
         {
             context.AddIssue(KnownErrors.UseOfUnassignedVariable, this);
         }

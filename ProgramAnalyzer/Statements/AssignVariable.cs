@@ -6,7 +6,6 @@ public sealed class AssignVariable(string variableName) : Statement
 {
     public string VariableName { get; } = variableName;
 
-    public bool IsDeclared { get; set; }
     public AssignVariable? PreviousAssignment { get; set; }
     public long InitialPosition { get; set; } // position of the first assignment in the call stack
 
@@ -18,10 +17,6 @@ public sealed class AssignVariable(string variableName) : Statement
         {
             context.AddIssue(KnownErrors.UseOfUndeclaredVariable, this);
         }
-        else
-        {
-            IsDeclared = true;
-        }
         return;
     }
 
@@ -30,12 +25,14 @@ public sealed class AssignVariable(string variableName) : Statement
         if (!context.Declarations.IsVariableDeclared(VariableName, ParentScope!, Position))
         {
             context.AddIssue(KnownErrors.UseOfUndeclaredVariable, this);
+
+            // It is not clear, if we want to ignore undeclared assignments.
+            // Assume that we still want to consider them.
+            // Otherwise uncomment the line below                
+            // return;
         }
 
-        // It is not clear, if we want to ignore undeclared assignments.
-        // Assume that we still want to consider them.
-        // Otherwise uncomment the check below                
-        // if (IsDeclared)
+        if (!context.IsTraversingFunctionDeclaration)
         {
             context.Assignments.TryAdd(context, this);
         }

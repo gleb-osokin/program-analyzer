@@ -14,6 +14,8 @@ public sealed class FunctionDeclaration(string functionName)
 
     public override string ToString(int indent) => $"func {FunctionName} " + Body.ToString(indent);
 
+    public override bool HasNestedScope(AnalyzerContext context) => Body.Count > 0;
+
     public IEnumerator<Statement> GetEnumerator() => Body.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => Body.GetEnumerator();
     public void Add(Statement statement) => Body.Add(statement);
@@ -22,13 +24,13 @@ public sealed class FunctionDeclaration(string functionName)
     {
         Body.ParentScope = ParentScope;
         
-        if (!context.Declarations.TryAddDeclaration(FunctionName, this, Body.Count > 0 ? Body : ParentScope!))
+        if (!context.Declarations.TryAddDeclaration(FunctionName, this))
         {
             IsConflict = true;
             context.AddIssue(KnownErrors.ConflictDeclaration, this);
         }
 
-        if (Body.Count <= 0)            
+        if (!HasNestedScope(context))            
             return;
 
         // check for conflicting/missing declarations even if we are in conflict
@@ -37,12 +39,20 @@ public sealed class FunctionDeclaration(string functionName)
 
     public override void OnCallStackEnter(AnalyzerContext context)
     {
-        if (IsConflict ||
-            context.Declarations.TryAddDeclaration(
-                FunctionName, this, Body.Count > 0 ? Body : ParentScope!, setVisited: true))
-            return;
+        if (!IsConflict &&
+            !context.Declarations.TryAddDeclaration(
+                FunctionName, this, setVisited: true))
+        {
+            IsConflict = true;
+            context.AddIssue(KnownErrors.ConflictDeclaration, this);
+        }
 
-        IsConflict = true;
-        context.AddIssue(KnownErrors.ConflictDeclaration, this);
+        context.DeclarationDepth++;
+        Body.OnCallStackEnter(context);
+    }
+
+    public override void OnCallStackExit(AnalyzerContext context)
+    {
+        context.DeclarationDepth--;
     }
 }

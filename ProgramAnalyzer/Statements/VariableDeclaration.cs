@@ -13,7 +13,7 @@ public sealed class VariableDeclaration(string variableName) : Statement, IDecla
 
     public override void OnDeclarationsEnter(AnalyzerContext context)
     {
-        if (context.Declarations.TryAddDeclaration(VariableName, this, ParentScope!))
+        if (context.Declarations.TryAddDeclaration(VariableName, this))
             return;
 
         IsConflict = true;
@@ -23,7 +23,7 @@ public sealed class VariableDeclaration(string variableName) : Statement, IDecla
     public override void OnCallStackEnter(AnalyzerContext context)
     {
         if (IsConflict ||
-            context.Declarations.TryAddDeclaration(VariableName, this, ParentScope!, setVisited: true))
+            context.Declarations.TryAddDeclaration(VariableName, this, setVisited: true))
             return;
 
         IsConflict = true;

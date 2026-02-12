@@ -6,11 +6,17 @@ public sealed class Invocation(string functionName) : Statement
 {
     public string FunctionName { get; } = functionName;
 
+    public FunctionDeclaration? Declaration { get; set; }
     public Invocation? ParentInvocation { get; set; }
 
     public bool IsEmpty { get; set; }
 
     public override string ToString(int indent) => $"{FunctionName}()";
+
+    public override bool HasNestedScope(AnalyzerContext context) =>
+        !IsEmpty &&
+        Declaration != null &&
+        !context.IsTraversingFunctionDeclaration;
 
     public override void OnDeclarationsEnter(AnalyzerContext context)
     {
@@ -19,27 +25,40 @@ public sealed class Invocation(string functionName) : Statement
 
     public override void OnCallStackEnter(AnalyzerContext context)
     {
-        var declaration = context.Declarations.GetFunctionDeclaration(FunctionName, ParentScope!);
-        if (declaration == null || declaration.ParentIfStatement != null)
+        Declaration = context.Declarations.GetFunctionDeclaration(FunctionName, ParentScope!);
+        if (Declaration == null || Declaration.ParentIfStatement != null)
         {
             context.AddIssue(KnownErrors.CallOfUndeclaredFunc, this);
             return;
         }
 
-        IsEmpty = declaration.Body.Count == 0;
+        IsEmpty = Declaration.Body.Count == 0;
+        if (context.IsTraversingFunctionDeclaration)
+            return;
 
         // avoid recursive inspections
         var currentInvocation = context.CurrentInvocation;
         while (currentInvocation != null)
         {
             if (currentInvocation.FunctionName == FunctionName)
+            {
+                // hack to make consequent HasNestedScope() check return false
+                // Declaration will be reset upon next enter
+                Declaration = null;
                 return;
+            }
 
             currentInvocation = currentInvocation.ParentInvocation;
         }
 
         ParentInvocation = context.CurrentInvocation;
         context.CurrentInvocation = this;
-        declaration.Body.OnCallStackEnter(context);
+        Declaration.Body.OnCallStackEnter(context);
+    }
+
+    public override void OnCallStackExit(AnalyzerContext context)
+    {
+        context.CurrentInvocation = ParentInvocation;
+        ParentInvocation = null;
     }
 }

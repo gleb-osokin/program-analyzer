@@ -12,9 +12,12 @@ public class AnalyzerContext
     public LinkedStack Stack { get; } = new();
 
     public DeclarationStack Declarations { get; } = new();
-    public AssignmentStack Assignments { get; } = new();
+    public AssignmentsDictionary Assignments { get; } = new();
     public Statement? CurrentStatement { get; set; }
     public Invocation? CurrentInvocation { get; set; }
+
+    public int DeclarationDepth { get; set; }
+    public bool IsTraversingFunctionDeclaration => DeclarationDepth > 0;
 
     public List<Issue> GetAllIssues() =>
         _issues

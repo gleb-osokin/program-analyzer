@@ -8,7 +8,7 @@ public sealed class DeclarationStack
     private readonly Dictionary<string, IDeclaration> _declarations = [];
 
     public bool TryAddDeclaration(
-        string name, IDeclaration declaration, ProgramBlock scope, bool setVisited = false)
+        string name, IDeclaration declaration, bool setVisited = false)
     {
         ref var existingDeclaration = ref CollectionsMarshal.GetValueRefOrAddDefault(_declarations, name, out var exists);
         if (exists &&
@@ -59,10 +59,16 @@ public sealed class DeclarationStack
             return AreIntersectingScopes(declaration1.ParentScope!, declaration2.ParentScope!);
 
         if (declaration1.ParentIfStatement == null) // declaration2 is in if block
-            return declaration1.ParentScope!.IsChildOf(declaration2.ParentScope!);
+            return declaration2 is FunctionDeclaration func && 
+                   (func.Body == declaration1.ParentScope || 
+                   declaration1.ParentScope!.IsChildOf(func.Body)) ||
+                   declaration1.ParentScope!.IsChildOf(declaration2.ParentScope!);
 
         if (declaration2.ParentIfStatement == null) // declaration1 is in if block
-            return declaration2.ParentScope!.IsChildOf(declaration1.ParentScope!);
+            return declaration1 is FunctionDeclaration func && 
+                   (func.Body == declaration2.ParentScope ||
+                   declaration2.ParentScope!.IsChildOf(func.Body)) ||
+                   declaration2.ParentScope!.IsChildOf(declaration1.ParentScope!);
 
         // since there can be only one statement in an if block and both statements are in different ifs
         return false;

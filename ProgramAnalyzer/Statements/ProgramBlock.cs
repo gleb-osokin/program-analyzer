@@ -65,7 +65,5 @@ public sealed class ProgramBlock : List<Statement>
         {
             context.Stack.Push(this[i]);
         }
-
-        this[Count - 1].IsLastMember = true;
     }
 }

@@ -5,10 +5,11 @@ namespace ProgramAnalyzer.Statements;
 public sealed class IfStatement : Statement
 {
     public required Statement ThenBody { get; init; }
-
-    public long CallStackPosition { get; set; }
+    public long LastVisitedPosition { get; set; }
 
     public override string ToString(int indent) => "if (...) " + ThenBody.ToString(indent);
+
+    public override bool HasNestedScope(AnalyzerContext context) => true;
 
     public override void OnDeclarationsEnter(AnalyzerContext context)
     {
@@ -19,8 +20,19 @@ public sealed class IfStatement : Statement
 
     public override void OnCallStackEnter(AnalyzerContext context)
     {
-        CallStackPosition = context.Position;
-        context.Assignments.PushScope(this);
+        if (!context.IsTraversingFunctionDeclaration)
+        {
+            LastVisitedPosition = context.Position;
+        }
+
         context.Stack.Push(ThenBody);
+    }
+
+    public override void OnCallStackExit(AnalyzerContext context)
+    {
+        if (!context.IsTraversingFunctionDeclaration)
+        {
+            context.Assignments.RemoveNested(this);
+        }
     }
 }
