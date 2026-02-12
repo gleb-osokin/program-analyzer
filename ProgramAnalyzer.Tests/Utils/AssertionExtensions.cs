@@ -9,6 +9,6 @@ internal static class AssertionExtensions
     {
         issue.Message.ShouldBe(message);
         issue.Statement.ShouldBeOfType<T>();
-        issue.Statement.Position.ShouldBe(position);
+        issue.Statement.OriginalPosition.ShouldBe(position);
     }
 }

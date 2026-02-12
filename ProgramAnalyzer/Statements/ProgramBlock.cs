@@ -28,11 +28,8 @@ public sealed class ProgramBlock : List<Statement>
 
     public override string ToString() => ToString(indent: 0);
 
-    public bool IsEqualOrChildOf(ProgramBlock other)
+    public bool IsChildOf(ProgramBlock other)
     {
-        if (other == this)
-            return true;
-
         while (other.ParentScope != null)
         {
             if (other.ParentScope == this)

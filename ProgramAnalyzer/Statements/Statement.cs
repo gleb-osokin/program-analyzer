@@ -13,7 +13,9 @@ public abstract class Statement
     public abstract string ToString(int indent);
     public sealed override string ToString() => ToString(indent: 0);
 
-    public long Position { get; set; } = -1; // For results ordering in tests
+    public long OriginalPosition { get; set; } = -1; // For results ordering in tests
+    public long Position { get; set; } // set during call analysis pass
+
     public ProgramBlock? ParentScope { get; set; }
     public IfStatement? ParentIfStatement { get; set; } // immediate parent for IfStatement->ThenBody
 

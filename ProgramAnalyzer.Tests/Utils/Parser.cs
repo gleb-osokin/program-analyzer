@@ -73,7 +73,7 @@ internal static class Parser
         if (assignmentPos >= 0)
         {
             var varName = line[0..assignmentPos].Trim().ToString();
-            programBlock.Add(new AssignVariable(varName) { Position = position++ });
+            programBlock.Add(new AssignVariable(varName) { OriginalPosition = position++ });
             return;
         }
 
@@ -86,7 +86,7 @@ internal static class Parser
             var openingPos = line.IndexOf('{');
             var funcName = line[(funcPos + "func ".Length)..openingPos].Trim().ToString();
             programBlock.Add(
-                new FunctionDeclaration(funcName) { Position = position++ }
+                new FunctionDeclaration(funcName) { OriginalPosition = position++ }
                 .WithStatements(ParseInternal(input, ref nextLineStart, ref position)));
             return;
         }
@@ -98,7 +98,7 @@ internal static class Parser
 
             programBlock.Add(new IfStatement()
             {
-                Position = position++,
+                OriginalPosition = position++,
                 // if-block can contain only a single statement and not an program block
                 ThenBody = ParseInternal(input, ref nextLineStart, ref position).First(),
             });
@@ -109,7 +109,7 @@ internal static class Parser
         if (invocationPos >= 0)
         {
             var funcName = line[0..invocationPos].Trim().ToString();
-            programBlock.Add(new Invocation(funcName) { Position = position++ });
+            programBlock.Add(new Invocation(funcName) { OriginalPosition = position++ });
             return;
         }
 
@@ -118,7 +118,7 @@ internal static class Parser
         {
             var closingPos = line.IndexOf(')');
             var varName = line[(printPos + "print(".Length)..closingPos].ToString();
-            programBlock.Add(new PrintVariable(varName) { Position = position++ });
+            programBlock.Add(new PrintVariable(varName) { OriginalPosition = position++ });
             return;
         }
 
@@ -126,7 +126,7 @@ internal static class Parser
         if (varNamePos >= 0)
         {
             var varName = line[(varNamePos + "var ".Length)..].Trim().ToString();
-            programBlock.Add(new VariableDeclaration(varName) { Position = position++ });
+            programBlock.Add(new VariableDeclaration(varName) { OriginalPosition = position++ });
             return;
         }
     }

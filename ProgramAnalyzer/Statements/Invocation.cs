@@ -20,7 +20,7 @@ public sealed class Invocation(string functionName) : Statement
     public override void OnCallStackEnter(AnalyzerContext context)
     {
         var declaration = context.Declarations.GetFunctionDeclaration(FunctionName, ParentScope!);
-        if (declaration == null || !declaration.IsInvocable)
+        if (declaration == null || declaration.ParentIfStatement != null)
         {
             context.AddIssue(KnownErrors.CallOfUndeclaredFunc, this);
             return;

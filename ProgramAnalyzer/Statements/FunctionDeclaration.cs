@@ -4,12 +4,13 @@ using System.Collections;
 namespace ProgramAnalyzer.Statements;
 
 public sealed class FunctionDeclaration(string functionName)
-  : Statement, IEnumerable<Statement>
+  : Statement, IEnumerable<Statement>, IDeclaration
 {
     public string FunctionName { get; } = functionName;
 
     public ProgramBlock Body { get; } = [];
-    public bool IsInvocable { get; set; }
+    public bool IsConflict { get; set; }
+    public bool IsVisited { get; set; }
 
     public override string ToString(int indent) => $"func {FunctionName} " + Body.ToString(indent);
 
@@ -19,13 +20,11 @@ public sealed class FunctionDeclaration(string functionName)
 
     public override void OnDeclarationsEnter(AnalyzerContext context)
     {
-        IsInvocable = ParentIfStatement == null;
-        var isConflict = IsInvocable
-            ? !context.Declarations.TryAddDeclaration(FunctionName, this)
-            : context.Declarations.GetFunctionDeclaration(FunctionName, ParentScope!) != null;
-
-        if (isConflict)
+        Body.ParentScope = ParentScope;
+        
+        if (!context.Declarations.TryAddDeclaration(FunctionName, this, Body.Count > 0 ? Body : ParentScope!))
         {
+            IsConflict = true;
             context.AddIssue(KnownErrors.ConflictDeclaration, this);
         }
 
@@ -38,6 +37,12 @@ public sealed class FunctionDeclaration(string functionName)
 
     public override void OnCallStackEnter(AnalyzerContext context)
     {
-        // ignore function declarations completely during call stack analysis
+        if (IsConflict ||
+            context.Declarations.TryAddDeclaration(
+                FunctionName, this, Body.Count > 0 ? Body : ParentScope!, setVisited: true))
+            return;
+
+        IsConflict = true;
+        context.AddIssue(KnownErrors.ConflictDeclaration, this);
     }
 }

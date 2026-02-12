@@ -27,6 +27,11 @@ public sealed class AssignVariable(string variableName) : Statement
 
     public override void OnCallStackEnter(AnalyzerContext context)
     {
+        if (!context.Declarations.IsVariableDeclared(VariableName, ParentScope!, Position))
+        {
+            context.AddIssue(KnownErrors.UseOfUndeclaredVariable, this);
+        }
+
         // It is not clear, if we want to ignore undeclared assignments.
         // Assume that we still want to consider them.
         // Otherwise uncomment the check below                

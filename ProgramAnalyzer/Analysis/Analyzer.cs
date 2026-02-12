@@ -37,6 +37,10 @@ public class Analyzer
         while (context.CurrentStatement != null)
         {
             var statement = context.CurrentStatement;
+            if (statement.Position == 0)
+            {
+                statement.Position = context.Position;
+            }
             statement.OnCallStackEnter(context);
 
             var currentInvocation = context.CurrentInvocation;
