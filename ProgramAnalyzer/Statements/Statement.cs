@@ -7,17 +7,15 @@ public abstract class Statement
     public Statement? PreviousStatement { get; set; }
     public Statement? NextStatement { get; set; }
 
-    public Statement? NextDeclaration { get; set; } // in scope
-
+    public bool IsFirstMember => ParentScope![0] == this;
     public bool IsLastMember => ParentIfStatement != null ||
-                                  this == ParentScope![^1];
-
+                                this == ParentScope![^1];
 
     public abstract string ToString(int indent);
     public sealed override string ToString() => ToString(indent: 0);
 
     public long OriginalPosition { get; set; } = -1; // For results ordering in tests
-    public long Position { get; set; } // set during call analysis pass
+    public long ScopePosition { get; set; }
 
     public ProgramBlock? ParentScope { get; set; }
     public IfStatement? ParentIfStatement { get; set; } // immediate parent for IfStatement->ThenBody

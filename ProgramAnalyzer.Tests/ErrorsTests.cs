@@ -68,14 +68,15 @@ public class ErrorsTests
         var result = new Analyzer().Analyze(program).SortIssues();
 
         result.ShouldSatisfyAllConditions(
-            res => res.Count.ShouldBe(7),
+            res => res.Count.ShouldBe(8),
             res => res[0].ShouldHaveError<AssignVariable>(UseOfUndeclaredVariable, 1),
             res => res[1].ShouldHaveError<PrintVariable>(UseOfUndeclaredVariable, 2),
             res => res[2].ShouldHaveError<PrintVariable>(UseOfUndeclaredVariable, 4),
             res => res[3].ShouldHaveError<Invocation>(CallOfUndeclaredFunc, 5),
             res => res[4].ShouldHaveError<AssignVariable>(UseOfUndeclaredVariable, 6),
             res => res[5].ShouldHaveError<Invocation>(CallOfUndeclaredFunc, 9),
-            res => res[6].ShouldHaveError<PrintVariable>(UseOfUndeclaredVariable, 13));
+            res => res[6].ShouldHaveError<PrintVariable>(UseOfUndeclaredVariable, 13),
+            res => res[7].ShouldHaveError<PrintVariable>(UseOfUnassignedVariable, 13));
     }
 
     [Fact]
@@ -382,5 +383,33 @@ public class ErrorsTests
             res => res.Count.ShouldBe(2),
             res => res[0].ShouldHaveError<FunctionDeclaration>(ConflictDeclaration, 2),
             res => res[0].ShouldHaveError<AssignVariable>(UseOfUnassignedVariable, 3));
+    }
+
+    [Fact]
+    public void Analyze_IntersectingConflictingVariablesAndDeclarations_AreStillAssignableInvocable()
+    {
+        var program = Parser.Parse(
+            """
+            var a
+            func a { // error
+            }
+            a = ... // OK, var declared
+
+            var b
+            b = ...
+
+            a() // OK, func ceclared
+            b() // OK, func declared
+
+            func b { // error
+            }
+            """);
+
+        var result = new Analyzer().Analyze(program).SortIssues();
+
+        result.ShouldSatisfyAllConditions(
+            res => res.Count.ShouldBe(2),
+            res => res[0].ShouldHaveError<FunctionDeclaration>(ConflictDeclaration, 1),
+            res => res[1].ShouldHaveError<FunctionDeclaration>(ConflictDeclaration, 7));
     }
 }

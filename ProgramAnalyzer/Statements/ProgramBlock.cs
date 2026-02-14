@@ -9,7 +9,7 @@ public sealed class ProgramBlock : List<Statement>
 
     public FunctionDeclaration? Owner {  get; set; }
 
-    public Statement? FirstDeclaration { get; set; }
+    public FunctionDeclaration? LastFunctionDeclaration { get; set; }
 
     public string ToString(int indent)
     {
@@ -48,11 +48,19 @@ public sealed class ProgramBlock : List<Statement>
         Owner = context.CurrentStatement as FunctionDeclaration;
         ParentScope = Owner?.ParentScope;
 
+        var counter = 0;
         for (var i = 0; i < Count; i++)
         {
             var statement = this[i];
             statement.ParentScope = this;
+            statement.ScopePosition = counter++;
+
             context.Queue.Enqueue(statement);
+            if (statement is IfStatement ifStatement)
+            {
+                ifStatement.ScopePosition = counter++;
+                context.Queue.Enqueue(ifStatement.ThenBody);
+            }
         }
     }
 
@@ -60,6 +68,8 @@ public sealed class ProgramBlock : List<Statement>
     {
         if (Count == 0)
             return;
+
+        context.LastVisitedVariableDeclaration = null;
 
         for (var i = Count - 1; i >= 0; i--)
         {

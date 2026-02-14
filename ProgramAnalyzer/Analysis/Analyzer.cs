@@ -24,7 +24,16 @@ public class Analyzer
         while (context.CurrentStatement != null)
         {
             var statement = context.CurrentStatement;
+            if (statement.IsFirstMember)
+            {
+                context.LastVisitedVariableDeclaration = null;
+            }
+
             statement.OnDeclarationsEnter(context);
+            if (statement.IsLastMember && statement.ParentScope!.LastFunctionDeclaration == null)
+            {
+                statement.ParentScope.LastFunctionDeclaration = statement.ParentScope.ParentScope?.LastFunctionDeclaration;
+            }
             context.CurrentStatement = context.Queue.Dequeue();
         }
     }
@@ -37,11 +46,6 @@ public class Analyzer
         while (context.CurrentStatement != null)
         {
             var statement = context.CurrentStatement;
-            if (statement.Position == 0)
-            {
-                statement.Position = context.Position;
-            }
-
             statement.OnCallStackEnter(context);
 
             if (statement.HasNestedScope(context))
@@ -58,7 +62,6 @@ public class Analyzer
             }
 
             context.CurrentStatement = context.Stack.Pop();
-            context.Position++;
         }
     }
 }

@@ -5,17 +5,13 @@ namespace ProgramAnalyzer.Statements;
 public sealed class PrintVariable(string variableName) : Statement
 {
     public string VariableName { get; } = variableName;
-    public bool IsDeclared { get; set; }
 
     public override string ToString(int indent) => $"print({VariableName})";
 
     public override void OnDeclarationsEnter(AnalyzerContext context)
     {
-        if (context.Declarations.IsVariableDeclared(VariableName, ParentScope!))
-        {
-            IsDeclared = true;
-        }
-        else
+        var lastKnownDeclaration = context.LastVisitedVariableDeclaration ?? ParentScope!.Owner?.PreviousVariableDeclaration;
+        if (context.FindVariableDeclaration(VariableName, lastKnownDeclaration) == null)
         {
             context.AddIssue(KnownErrors.UseOfUndeclaredVariable, this);
         }
@@ -23,10 +19,11 @@ public sealed class PrintVariable(string variableName) : Statement
 
     public override void OnCallStackEnter(AnalyzerContext context)
     {
-        if (IsDeclared && 
-            !context.IsTraversingFunctionDeclaration && 
-            !context.Assignments.IsAssigned(VariableName))
-        {
+        if (context.IsTraversingFunctionDeclaration)
+            return;
+
+        if (!context.IsAssigned(VariableName))
+        { 
             context.AddIssue(KnownErrors.UseOfUnassignedVariable, this);
         }
     }

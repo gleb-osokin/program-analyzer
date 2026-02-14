@@ -25,7 +25,7 @@ public sealed class Invocation(string functionName) : Statement
 
     public override void OnCallStackEnter(AnalyzerContext context)
     {
-        Declaration = context.Declarations.GetFunctionDeclaration(FunctionName, ParentScope!);
+        Declaration = context.FindFunctionDeclaration(FunctionName, ParentScope!.LastFunctionDeclaration);
         if (Declaration == null || Declaration.ParentIfStatement != null)
         {
             context.AddIssue(KnownErrors.CallOfUndeclaredFunc, this);
