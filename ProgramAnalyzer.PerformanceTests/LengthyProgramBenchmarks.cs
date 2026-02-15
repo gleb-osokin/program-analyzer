@@ -9,12 +9,13 @@ public class LengthyProgramBenchmarks
     [Params(10, 100, 1000, 100_000, 1_000_000)]
     public int Length;
 
-    private readonly ProgramBlock _program = [];
+    private ProgramBlock? _program;
     private readonly Analyzer _analyzer = new();
 
-    [GlobalSetup]
+    [IterationSetup]
     public void GlobalSetup()
     {
+        _program = [];
         for (var i = 0; i < Length; i++)
         {
             var name = "a" + Length;
@@ -26,5 +27,5 @@ public class LengthyProgramBenchmarks
     }
 
     [Benchmark]
-    public void Analyze() => _analyzer.Analyze(_program);
+    public void Analyze() => _analyzer.Analyze(_program!);
 }
