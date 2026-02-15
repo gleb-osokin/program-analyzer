@@ -9,7 +9,7 @@ public class WideProgramBenchmarks
     [Params(10, 100, 1000, 10_000)]
     public int Length;
 
-    private readonly ProgramBlock _program = [];
+    private ProgramBlock _program = [];
     private readonly Analyzer _analyzer = new();
 
     [GlobalSetup]
@@ -20,13 +20,19 @@ public class WideProgramBenchmarks
 
         for (var i = 0; i < Length; i++)
         {
-            var name = "a" + Length;
+            var name = "a" + i;
             func.Add(new FunctionDeclaration(name));
             func.Add(new Invocation(name));
             func = (FunctionDeclaration)func.Body[0];
         }
 
         _program.Add(new Invocation("a"));
+    }
+
+    [GlobalCleanup]
+    public void GlobalCleanup()
+    {
+        _program.Clear();
     }
 
     [Benchmark]
