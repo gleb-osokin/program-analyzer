@@ -9,7 +9,7 @@ public class WideProgramBenchmarks
     [Params(10, 100, 1000, 10_000)]
     public int Length;
 
-    private ProgramBlock _program = [];
+    private readonly ProgramBlock _program = [];
     private readonly Analyzer _analyzer = new();
 
     [GlobalSetup]
@@ -27,12 +27,6 @@ public class WideProgramBenchmarks
         }
 
         _program.Add(new Invocation("a"));
-    }
-
-    [GlobalCleanup]
-    public void GlobalCleanup()
-    {
-        _program.Clear();
     }
 
     [Benchmark]
