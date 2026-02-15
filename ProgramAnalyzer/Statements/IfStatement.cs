@@ -16,6 +16,8 @@ public sealed class IfStatement : Statement
     {
         ThenBody.ParentScope = ParentScope;
         ThenBody.ParentIfStatement = this;
+
+        context.Queue.Enqueue(ThenBody);
     }
 
     public override void OnCallStackEnter(AnalyzerContext context)

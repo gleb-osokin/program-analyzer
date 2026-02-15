@@ -324,6 +324,39 @@ public class ErrorsTests
     }
 
     [Fact]
+    public void Analyze_ConflictingDeclarations_ReportedInCorrectOrder()
+    {
+        var program = Parser.Parse(
+           """
+           var A
+           func A { // error
+           }
+
+           if (...) {
+             var b // error
+           }
+
+           func b {
+           }
+
+           func C {
+             var c // error
+           }
+
+           func c {
+           }
+           """);
+
+        var result = new Analyzer().Analyze(program).SortIssues();
+
+        result.ShouldSatisfyAllConditions(
+            res => res.Count.ShouldBe(3),
+            res => res[0].ShouldHaveError<FunctionDeclaration>(ConflictDeclaration, 1),
+            res => res[1].ShouldHaveError<VariableDeclaration>(ConflictDeclaration, 3),
+            res => res[2].ShouldHaveError<VariableDeclaration>(ConflictDeclaration, 6));
+    }
+
+    [Fact]
     public void Analyze_ConflictingDeclarations_IssuesStillInspected()
     {
         var program = Parser.Parse(

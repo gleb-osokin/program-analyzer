@@ -4,7 +4,7 @@ namespace ProgramAnalyzer.Analysis;
 
 public class AnalyzerContext
 {
-    private readonly Dictionary<Statement, List<string>> _issues = [];
+    public List<Issue> Issues { get; } = [];
 
     public long Position { get; set; }
 
@@ -18,6 +18,9 @@ public class AnalyzerContext
 
     public int DeclarationDepth { get; set; }
     public bool IsTraversingFunctionDeclaration => DeclarationDepth > 0;
+
+    public void AddIssue(string error, Statement statement) =>
+        Issues.Add(new Issue(error, statement));
 
     public VariableDeclaration? FindVariableDeclaration(string name, VariableDeclaration? start)
     {
@@ -41,9 +44,8 @@ public class AnalyzerContext
         return current?.OriginalDeclaration ?? current;
     }
 
-    public FunctionDeclaration? FindFunctionDeclaration(string name, Statement? start, out bool isBelow)
+    public FunctionDeclaration? FindFunctionDeclaration(string name, Statement? start)
     {
-        isBelow = false;
         if (start == null)
             return null;
 
@@ -54,57 +56,9 @@ public class AnalyzerContext
 
         var nearestFunctionDeclaration = start.ParentScope!.LastFunctionDeclaration ??
                                          start.ParentScope!.ParentScope?.LastFunctionDeclaration;
-        var result = start == null
+        return start == null
             ? null
             : FindFunctionDeclaration(name, nearestFunctionDeclaration);
-
-        if (result == null)
-            return null;
-
-        while (start != null && start.ParentScope != result!.ParentScope)
-        {
-            // we're walking up the tree, so this is guaranteed to converge
-            start = start.ParentScope!.Owner;
-        }
-
-        isBelow = start!.ScopePosition < result.ScopePosition;
-        return result;
-    }
-
-    public bool IsAssigned(string name)
-    {
-        var assignment = LastKnownAssignment;
-        while (assignment != null)
-        {
-            if (assignment.VariableName == name)
-                return true;
-
-            assignment = assignment.PreviousAssignment;
-        }
-
-        return false;
-    }
-
-    public List<Issue> GetAllIssues() =>
-        _issues
-            .SelectMany(pair =>
-                pair.Value.Select(err => new Issue(err, pair.Key)))
-            .ToList();
-
-    public void AddIssue(string error, Statement statement)
-    {
-        var errors = _issues.TryGetValue(statement, out var list)
-            ? list
-            : _issues[statement] = [];
-
-        // the list of errors will be small, a few items at most
-        foreach (var existingError in errors)
-        {
-            if (existingError == error)
-                return;
-        }
-
-        errors.Add(error);
     }
 
     private static bool IsConflicting(FunctionDeclaration higherScopedFunc, FunctionDeclaration lowerScopedFunc)

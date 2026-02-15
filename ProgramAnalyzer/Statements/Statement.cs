@@ -15,7 +15,6 @@ public abstract class Statement
     public sealed override string ToString() => ToString(indent: 0);
 
     public long OriginalPosition { get; set; } = -1; // For results ordering in tests
-    public long ScopePosition { get; set; }
 
     public ProgramBlock? ParentScope { get; set; }
     public IfStatement? ParentIfStatement { get; set; } // immediate parent for IfStatement->ThenBody

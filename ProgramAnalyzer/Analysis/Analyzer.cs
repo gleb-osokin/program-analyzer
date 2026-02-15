@@ -13,7 +13,7 @@ public class Analyzer
         AnalyzeDeclarations(program, context);
         AnalyzeCallStack(program, context);
 
-        return context.GetAllIssues();
+        return context.Issues;
     }
 
     private static void AnalyzeDeclarations(ProgramBlock program, AnalyzerContext context)

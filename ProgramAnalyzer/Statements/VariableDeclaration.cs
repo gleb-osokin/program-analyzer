@@ -2,7 +2,7 @@
 
 namespace ProgramAnalyzer.Statements;
 
-public sealed class VariableDeclaration(string variableName) : Statement, IDeclaration
+public sealed class VariableDeclaration(string variableName) : Statement
 {
     public string VariableName { get; } = variableName;
 
@@ -17,21 +17,12 @@ public sealed class VariableDeclaration(string variableName) : Statement, IDecla
         // guarantee declarations chain from here to the top
         PreviousDeclaration = context.LastVisitedVariableDeclaration ?? ParentScope!.Owner?.PreviousVariableDeclaration;
 
-        if (context.FindVariableDeclaration(VariableName, PreviousDeclaration) is { } conflictingVarDeclaration &&
-            conflictingVarDeclaration.ParentIfStatement == null) // vars in if statements don't affect anything below them
+        OriginalDeclaration = context.FindVariableDeclaration(VariableName, PreviousDeclaration);
+        if (OriginalDeclaration != null &&
+            OriginalDeclaration.ParentIfStatement == null || // vars in if statements don't affect anything below them
+            context.FindFunctionDeclaration(VariableName, this) != null)
         {
-            // conflicting variable declaration can only be ABOVE this one
             IsConflict = true;
-            OriginalDeclaration = conflictingVarDeclaration.OriginalDeclaration ?? conflictingVarDeclaration;
-        }
-
-        if (context.FindFunctionDeclaration(VariableName, this, out var isBelow) is { } conflictingFunc)
-        {
-            // conflicting function declaration can only be ABOVE or BELOW this one
-            IDeclaration conflictingStatement = isBelow
-                ? conflictingFunc
-                : this;
-            conflictingStatement.IsConflict = true;
         }
 
         context.LastVisitedVariableDeclaration = this;

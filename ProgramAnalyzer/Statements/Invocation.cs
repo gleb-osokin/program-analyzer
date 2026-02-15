@@ -4,6 +4,8 @@ namespace ProgramAnalyzer.Statements;
 
 public sealed class Invocation(string functionName) : Statement
 {
+    private bool _isUndeclared;
+
     public string FunctionName { get; } = functionName;
 
     public FunctionDeclaration? Declaration { get; set; }
@@ -25,9 +27,13 @@ public sealed class Invocation(string functionName) : Statement
 
     public override void OnCallStackEnter(AnalyzerContext context)
     {
+        if (_isUndeclared)
+            return; // avoid double reports
+
         Declaration = context.FindFunctionDeclaration(FunctionName, ParentScope!.LastFunctionDeclaration);
         if (Declaration == null || Declaration.ParentIfStatement != null)
         {
+            _isUndeclared = true;
             context.AddIssue(KnownErrors.CallOfUndeclaredFunc, this);
             return;
         }
